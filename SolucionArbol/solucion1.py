@@ -1,3 +1,6 @@
+ROJO = True
+NEGRO = False
+
 class Encuestado:
     def __init__(self, id, nombre, experticia, opinion):
         self.id = id
@@ -6,110 +9,119 @@ class Encuestado:
         self.opinion = opinion
 
     def __str__(self):
-        return f"{self.id}: {self.nombre}, Exp: {self.experticia}, Opin: {self.opinion}"
+        return f"({self.id}, {self.nombre}, Exp:{self.experticia}, Opin:{self.opinion})"
+    
+    def __gt__(self, other):
+        if self.opinion != other.opinion:
+            return self.opinion > other.opinion
+        return self.experticia > other.experticia
+        
 
-# Nodo árbol binario para encuestados
-class NodoEncuestado:
-    def __init__(self, encuestado):
-        self.encuestado = encuestado
+    
+class NodoRB:
+    def __init__(self, dato):
+        self.dato = dato
+        self.color = ROJO
         self.izq = None
         self.der = None
+        self.padre = None
+    
+    def __str__(self):
+        return self.dato
 
-    def insertar(self, nuevo):
-        # Ordenar primero por opinion descendente
-        if nuevo.opinion > self.encuestado.opinion:
-            if self.izq:
-                self.izq.insertar(nuevo)
-            else:
-                self.izq = NodoEncuestado(nuevo)
-        elif nuevo.opinion < self.encuestado.opinion:
-            if self.der:
-                self.der.insertar(nuevo)
-            else:
-                self.der = NodoEncuestado(nuevo)
+class ArbolRB:
+    def __init__(self):
+        self.raiz = None
+
+    def insertar(self, dato):
+        nuevo = NodoRB(dato)
+        self.raiz = self._insertar_rec(self.raiz, nuevo)
+        self.raiz.color = NEGRO
+
+    def _insertar_rec(self, raiz, nodo):
+        if raiz is None:
+            return nodo
+
+        if nodo.dato < raiz.dato:
+            raiz.izq = self._insertar_rec(raiz.izq, nodo)
+            raiz.izq.padre = raiz
         else:
-            # Si empatan, ordenar por experticia descendente
-            if nuevo.experticia > self.encuestado.experticia:
-                if self.izq:
-                    self.izq.insertar(nuevo)
-                else:
-                    self.izq = NodoEncuestado(nuevo)
-            else:
-                if self.der:
-                    self.der.insertar(nuevo)
-                else:
-                    self.der = NodoEncuestado(nuevo)
+            raiz.der = self._insertar_rec(raiz.der, nodo)
+            raiz.der.padre = raiz
 
-    def en_orden(self, resultado):
-        if self.izq:
-            self.izq.en_orden(resultado)
-        resultado.append(self.encuestado)
-        if self.der:
-            self.der.en_orden(resultado)
+        # Balanceo
+        raiz = self._balancear(raiz)
+        return raiz
 
-class Pregunta:
-    def __init__(self, id_pregunta):
-        self.id_pregunta = id_pregunta
-        self.raiz = None  # Raíz del árbol de encuestados
-        self.encuestados = []
+    def _es_rojo(self, nodo):
+        return nodo is not None and nodo.color == ROJO
 
-    def agregar_encuestado(self, encuestado):
-        if self.raiz is None:
-            self.raiz = NodoEncuestado(encuestado)
-        else:
-            self.raiz.insertar(encuestado)
-        self.encuestados.append(encuestado)
+    def _rotar_izquierda(self, h):
+        x = h.der
+        h.der = x.izq
+        if x.izq:
+            x.izq.padre = h
+        x.izq = h
+        x.color = h.color
+        h.color = ROJO
+        return x
 
-    def obtener_ordenados(self):
+    def _rotar_derecha(self, h):
+        x = h.izq
+        h.izq = x.der
+        if x.der:
+            x.der.padre = h
+        x.der = h
+        x.color = h.color
+        h.color = ROJO
+        return x
+
+    def _cambiar_colores(self, h):
+        h.color = ROJO
+        if h.izq: h.izq.color = NEGRO
+        if h.der: h.der.color = NEGRO
+
+    def _balancear(self, h):
+        if self._es_rojo(h.der) and not self._es_rojo(h.izq):
+            h = self._rotar_izquierda(h)
+        if self._es_rojo(h.izq) and self._es_rojo(h.izq.izq):
+            h = self._rotar_derecha(h)
+        if self._es_rojo(h.izq) and self._es_rojo(h.der):
+            self._cambiar_colores(h)
+        return h
+
+    def inorden(self):
         resultado = []
-        if self.raiz:
-            self.raiz.en_orden(resultado)
+        self._inorden_rec(self.raiz, resultado)
         return resultado
 
-    def obtener_ordenados(self):
-        lista = []
-        if self.raiz:
-            self.raiz.en_orden(lista)
-        return lista
+    def _inorden_rec(self, nodo, resultado):
+        if nodo is None:
+            return
+        self._inorden_rec(nodo.izq, resultado)
+        resultado.append(nodo.dato)
+        self._inorden_rec(nodo.der, resultado)
+        
+if __name__ == "__main__":
+    e1 = Encuestado(1, "elkin", 9, 6)
+    e2 = Encuestado(2, "elkin", 5, 6)
+    e3 = Encuestado(3, "elkin", 10,4)
+    e5 = Encuestado(4, "elkin", 30, 8)
+    e4 = Encuestado(5, "elkin", 3, 8)
+    e6 = Encuestado(6, "elkin", 6, 3)
+    e7 = Encuestado(7, "elkin", 1, 7)
+    e8 = Encuestado(8, "elkin", 0, 7)
+    arn = ArbolRB()
+    print(e2>e1)
 
-    def promedio_opinion(self):
-        if not self.encuestados:
-            return 0
-        return sum(e.opinion for e in self.encuestados) / len(self.encuestados)
-    
-    def mediana_opinion(self):
-        ordenados = sorted([e.opinion for e in self.encuestados_list])
-        n = len(ordenados)
-        if n % 2 == 1:
-            return ordenados[n // 2]
-        else:
-            return (ordenados[n // 2 - 1] + ordenados[n // 2]) / 2
+    arn.insertar(e1)
+    arn.insertar(e2)
+    arn.insertar(e3)
+    arn.insertar(e4)
+    arn.insertar(e5)
+    arn.insertar(e6)
+    arn.insertar(e8)
+    arn.insertar(e7)
+    for e in arn.inorden():
+        print(e)
 
-    def moda_opinion(self):
-        opiniones = [e.opinion for e in self.encuestados_list]
-        contador = Counter(opiniones)
-        moda, freq = max(contador.items(), key=lambda x: (x[1], x[0]))
-        return moda
-
-    def extremismo(self):
-        extremos = sum(1 for e in self.encuestados_list if e.opinion == 0 or e.opinion == 10)
-        return extremos / len(self.encuestados_list)
-
-    def consenso(self):
-        opiniones = [e.opinion for e in self.encuestados_list]
-        contador = Counter(opiniones)
-        moda_freq = max(contador.values())
-        return moda_freq / len(self.encuestados_list)
-
-class Tema:
-    def __init__(self, nombre):
-        self.nombre = nombre
-        self.preguntas = []
-
-    def agregar_pregunta(self, pregunta):
-        self.preguntas.append(pregunta)
-
-    def promedio_tema(self):
-        if not self.preguntas:
-            return 0
-        return sum(p.promedio_opinion() for p in self.preguntas) / len(self.preguntas)
