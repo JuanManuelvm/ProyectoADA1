@@ -9,12 +9,14 @@ class Encuestado:
         self.opinion = opinion
 
     def __str__(self):
-        return f"({self.id}, {self.nombre}, Exp:{self.experticia}, Opin:{self.opinion})"
+        return f"(Id: {self.id}, Nombre: {self.nombre}, Exp:{self.experticia}, Opin:{self.opinion})"
     
     def __gt__(self, other):
         if self.opinion != other.opinion:
             return self.opinion > other.opinion
-        return self.experticia > other.experticia
+        if self.experticia != other.experticia:
+            return self.experticia > other.experticia
+        return self.id > other.id
         
 
     
@@ -109,8 +111,8 @@ if __name__ == "__main__":
     e5 = Encuestado(4, "elkin", 30, 8)
     e4 = Encuestado(5, "elkin", 3, 8)
     e6 = Encuestado(6, "elkin", 6, 3)
-    e7 = Encuestado(7, "elkin", 1, 7)
-    e8 = Encuestado(8, "elkin", 0, 7)
+    e7 = Encuestado(8, "elkin", 1, 7)
+    e8 = Encuestado(7, "elkin", 1, 7)
     arn = ArbolRB()
     print(e2>e1)
 
