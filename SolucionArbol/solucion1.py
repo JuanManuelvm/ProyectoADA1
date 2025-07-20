@@ -11,6 +11,12 @@ class Encuestado:
     def __str__(self):
         return f"(Id: {self.id}, Nombre: {self.nombre}, Exp:{self.experticia}, Opin:{self.opinion})"
     
+    def obtener_experticia_promedio(self):
+        return self.experticia
+    
+    def obtener_opinion_promedio(self):
+        return self.opinion
+    
     def __gt__(self, other):
         if self.opinion != other.opinion:
             return self.opinion > other.opinion
@@ -22,9 +28,17 @@ class Pregunta:
     def __init__(self, id):
         self.id = id
         self.encuestados = ArbolRB()
+        self._promedio_opinion = self.promedio_opinion()
 
     def __str__(self):
-        return f"(Id: {self.id})"
+        ids =", ".join(str(x.id) for x in self.encuestados.inorden())
+        return f"[{self.obtener_opinion_promedio()}]Pregunta {self.id}: ({ids})"
+    
+    def obtener_experticia_promedio(self):
+        return self.promedio_experticia()
+    
+    def obtener_opinion_promedio(self):
+        return self.promedio_opinion()
     
     def promedio_opinion(self):
         return self.encuestados.obtener_promedio("opinion")
@@ -42,6 +56,39 @@ class Pregunta:
             return self.promedio_experticia() < other.promedio_experticia()
         return self.cantidad_encuestados() < other.cantidad_encuestados()
     
+class Tema:
+    def __init__(self, id):
+        self.id = id
+        self.preguntas = ArbolRB()
+    def __str__(self):
+        preguntasstr = " \n\t".join(str(x) for x in self.preguntas.inorden())
+        return f"[{self.obtener_opinion_promedio()}] Tema: {self.id}:\n \t{preguntasstr} \n"
+        
+    
+    def obtener_experticia_promedio(self):
+        return self.promedio_experticia()
+    
+    def obtener_opinion_promedio(self):
+        return self.promedio_opinion()
+    
+    def cantidad_preguntas(self):
+        return self.preguntas.contar_nodos()
+    
+    def promedio_opinion(self):
+        return self.preguntas.obtener_promedio("opinion")
+
+    def promedio_experticia(self):
+        return self.preguntas.obtener_promedio("experticia")
+
+    def __gt__(self, other):
+        if self.promedio_opinion() != other.promedio_opinion():
+            return self.promedio_opinion() < other.promedio_opinion()
+        if self.promedio_experticia() != other.promedio_experticia():
+            return self.promedio_experticia() < other.promedio_experticia()
+        return self.cantidad_preguntas() < other.cantidad_preguntas()
+  
+    
+    
 class NodoRB:
     def __init__(self, dato):
         self.dato = dato
@@ -51,7 +98,7 @@ class NodoRB:
         self.padre = None
 
     def __str__(self):
-        return self.dato
+        return str(self.dato)
 
 class ArbolRB:
     def __init__(self):
@@ -142,31 +189,48 @@ class ArbolRB:
         if nodo is None:
             return 0, 0
         if atributo == "opinion":
-            valor = nodo.dato.opinion
+            valor = nodo.dato.obtener_opinion_promedio()
         elif atributo == "experticia":
-            valor = nodo.dato.experticia
+            valor = nodo.dato.obtener_experticia_promedio()
         else:
             valor = 0
         suma_izq, cant_izq = self._sumar_y_contar(nodo.izq, atributo)
         suma_der, cant_der = self._sumar_y_contar(nodo.der, atributo)
         return valor + suma_izq + suma_der, 1 + cant_izq + cant_der
+    def __str__(self):
+        return str(self.raiz.dato)
 
-        
+def imprimir_estructura(arbol_temas):
+    todos_los_encuestados = set()
+    temas = arbol_temas.inorden()
+
+    for tema in temas:
+        print(tema)
+        preguntas = tema.preguntas.inorden()
+
+        for pregunta in preguntas:
+            ids_encuestados = [x.id for x in pregunta.encuestados.inorden()]
+            todos_los_encuestados.update(ids_encuestados)
+
+    encuestados_str = ", ".join(str(x) for x in todos_los_encuestados)
+    print("Lista de encuestados:")
+    print(f"   {{{encuestados_str}}}")     
 if __name__ == "__main__":
+    
+    
     e1 = Encuestado(1, "elkin", 9, 6)
     e2 = Encuestado(2, "elkin", 5, 6)
     e3 = Encuestado(3, "elkin", 10,4)
-    e5 = Encuestado(4, "elkin", 30, 8)
-    e4 = Encuestado(5, "elkin", 3, 8)
-    e6 = Encuestado(6, "elkin", 6, 3)
-    e7 = Encuestado(8, "elkin", 1, 7)
+    e4 = Encuestado(4, "elkin", 30, 8)
+    e5 = Encuestado(10, "elkin", 3, 10)
+    e6 = Encuestado(6, "elkin", 6, 10)
+    e7 = Encuestado(15, "elkin", 1, 7)
     e8 = Encuestado(7, "elkin", 1, 7)
-    arn = ArbolRB()
 
     p1 = Pregunta(1)
     p2 = Pregunta(2)
-    arnPreguntas = ArbolRB()
-    print(e2>e1)
+    p3 = Pregunta(3)
+    
 
     p1.encuestados.insertar(e1)
     p1.encuestados.insertar(e2)
@@ -174,24 +238,28 @@ if __name__ == "__main__":
     p1.encuestados.insertar(e4)
     p2.encuestados.insertar(e5)
     p2.encuestados.insertar(e6)
-    p2.encuestados.insertar(e7)
-    p2.encuestados.insertar(e8)
-    arnPreguntas.insertar(p1)
-    arnPreguntas.insertar(p2)
+    p3.encuestados.insertar(e7)
+    p3.encuestados.insertar(e8)
+    #print(p1)
+    t1 = Tema(1)
+    t2 = Tema(2)
     
-    for e in arnPreguntas.inorden():
-        print(e)
-    print(p1.encuestados.obtener_promedio("opinion"))
-    print(p2.encuestados.obtener_promedio("opinion"))
+    t1.preguntas.insertar(p1)
+    t2.preguntas.insertar(p2)
+    t2.preguntas.insertar(p3)
+    arbolTemas = ArbolRB()
+    arbolTemas.insertar(t1)
+    arbolTemas.insertar(t2)
+    
+    imprimir_estructura(arbolTemas)
+    # print(t1.preguntas.obtener_promedio("opinion"))
+    # print(t2.preguntas.obtener_promedio("opinion"), end='\n\n')
+    
+    # print(p1.encuestados.obtener_promedio("opinion"))
+    # print(p2.encuestados.obtener_promedio("opinion"))
+    # print(p3.encuestados.obtener_promedio("opinion"))
+    
+    # print("\n")
 
-    arn.insertar(e1)
-    arn.insertar(e2)
-    arn.insertar(e3)
-    arn.insertar(e4)
-    arn.insertar(e5)
-    arn.insertar(e6)
-    arn.insertar(e8)
-    arn.insertar(e7)
-    for e in arn.inorden():
-        print(e)
+
 
