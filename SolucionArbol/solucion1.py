@@ -7,9 +7,10 @@ class Encuestado:
         self.nombre = nombre
         self.experticia = experticia
         self.opinion = opinion
+        self.frecuencia = 1
 
     def __str__(self):
-        return f"(Id: {self.id}, Nombre: {self.nombre}, Exp:{self.experticia}, Opin:{self.opinion})"
+        return f"(Id: {self.id}, Nombre: {self.nombre}, Exp:{self.experticia}, Opin:{self.opinion}), frecuencia: {self.frecuencia}"
     
     def obtener_experticia_promedio(self):
         return self.experticia
@@ -20,15 +21,22 @@ class Encuestado:
     def __gt__(self, other):
         if self.opinion != other.opinion:
             return self.opinion > other.opinion
+        self.frecuencia += 1 
         if self.experticia != other.experticia:
             return self.experticia > other.experticia
         return self.id > other.id
         
+    def _order_frecuenci(self, other):
+        if self.frecuencia != other.frecuencia:
+            return self.frecuencia < other.frecuencia
+        return self.opinion > other.opinion
+    
 class Pregunta:
     def __init__(self, id):
         self.id = id
         self.encuestados = ArbolRB()
         self._promedio_opinion = self.promedio_opinion()
+        self._moda_opinion = None
 
     def __str__(self):
         ids =", ".join(str(x.id) for x in self.encuestados.inorden())
@@ -48,7 +56,22 @@ class Pregunta:
 
     def cantidad_encuestados(self):
         return self.encuestados.contar_nodos()
-
+    
+    def moda(self):
+        if self.encuestados.raiz is None:
+            return None
+        arnbymoda = ArbolRB()
+        for x in self.encuestados.inorden():
+            arnbymoda.insertar_moda(x)
+        self._moda_opinion = arnbymoda.arbol_maximo().opinion
+        return self._moda_opinion
+            
+    def _order_frecuenci(self, other): #aqui se ordena por moda
+        self.moda()
+        if self._moda_opinion != other._moda_opinion:
+            return self._moda_opinion < other._moda_opinion
+        return self.id > other.id
+    
     def __gt__(self, other):
         if self.promedio_opinion() != other.promedio_opinion():
             return self.promedio_opinion() < other.promedio_opinion()
@@ -60,6 +83,8 @@ class Tema:
     def __init__(self, id):
         self.id = id
         self.preguntas = ArbolRB()
+        self._moda_opinion = None
+        
     def __str__(self):
         preguntasstr = " \n\t".join(str(x) for x in self.preguntas.inorden())
         return f"[{self.obtener_opinion_promedio()}] Tema: {self.id}:\n \t{preguntasstr} \n"
@@ -80,6 +105,7 @@ class Tema:
     def promedio_experticia(self):
         return self.preguntas.obtener_promedio("experticia")
 
+ 
     def __gt__(self, other):
         if self.promedio_opinion() != other.promedio_opinion():
             return self.promedio_opinion() < other.promedio_opinion()
@@ -87,6 +113,9 @@ class Tema:
             return self.promedio_experticia() < other.promedio_experticia()
         return self.cantidad_preguntas() < other.cantidad_preguntas()
   
+
+
+            
     
     
 class NodoRB:
@@ -112,12 +141,30 @@ class ArbolRB:
     def _insertar_rec(self, raiz, nodo):
         if raiz is None:
             return nodo
-
         if nodo.dato < raiz.dato:
             raiz.izq = self._insertar_rec(raiz.izq, nodo)
             raiz.izq.padre = raiz
         else:
             raiz.der = self._insertar_rec(raiz.der, nodo)
+            raiz.der.padre = raiz
+
+        # Balanceo
+        raiz = self._balancear(raiz)
+        return raiz
+    
+    def insertar_moda(self, dato):
+        nuevo = NodoRB(dato)
+        self.raiz = self._insertar_moda_rec(self.raiz, nuevo)
+        self.raiz.color = NEGRO
+
+    def _insertar_moda_rec(self, raiz, nodo):
+        if raiz is None:
+            return nodo
+        if nodo.dato._order_frecuenci(raiz.dato):
+            raiz.izq = self._insertar_moda_rec(raiz.izq, nodo)
+            raiz.izq.padre = raiz
+        else:
+            raiz.der = self._insertar_moda_rec(raiz.der, nodo)
             raiz.der.padre = raiz
 
         # Balanceo
@@ -172,7 +219,18 @@ class ArbolRB:
         self._inorden_rec(nodo.izq, resultado)
         resultado.append(nodo.dato)
         self._inorden_rec(nodo.der, resultado)
-
+        
+    def arbol_maximo(self):
+        nodo = self.raiz
+        while nodo.der is not None:
+            nodo = nodo.der
+        return nodo.dato
+    def arbol_minimo(self):
+        nodo = self.raiz
+        while nodo.izq is not None:
+            nodo = nodo.izq
+        return nodo.dato
+            
     def contar_nodos(self):
         return self._contar(self.raiz)
 
@@ -197,6 +255,16 @@ class ArbolRB:
         suma_izq, cant_izq = self._sumar_y_contar(nodo.izq, atributo)
         suma_der, cant_der = self._sumar_y_contar(nodo.der, atributo)
         return valor + suma_izq + suma_der, 1 + cant_izq + cant_der
+    
+    def max_min_moda(self, max_bool = True):
+        arbolPreguntas = ArbolRB()
+        for tema in self.inorden():
+            for pregunta in tema.preguntas.inorden():
+                arbolPreguntas.insertar_moda(pregunta)
+        if max_bool:
+            return arbolPreguntas.arbol_maximo()
+        return arbolPreguntas.arbol_minimo()
+        
     def __str__(self):
         return str(self.raiz.dato)
 
@@ -214,18 +282,23 @@ def imprimir_estructura(arbol_temas):
 
     encuestados_str = ", ".join(str(x) for x in todos_los_encuestados)
     print("Lista de encuestados:")
-    print(f"   {{{encuestados_str}}}")     
+    print(f"   {{{encuestados_str}}}")  
+    
+
+       
 if __name__ == "__main__":
     
     
     e1 = Encuestado(1, "elkin", 9, 6)
     e2 = Encuestado(2, "elkin", 5, 6)
-    e3 = Encuestado(3, "elkin", 10,4)
-    e4 = Encuestado(4, "elkin", 30, 8)
-    e5 = Encuestado(10, "elkin", 3, 10)
-    e6 = Encuestado(6, "elkin", 6, 10)
-    e7 = Encuestado(15, "elkin", 1, 7)
-    e8 = Encuestado(7, "elkin", 1, 7)
+    e3 = Encuestado(3, "elkin", 10,6)
+    e4 = Encuestado(4, "elkin", 30, 8)#moda 6
+    
+    e5 = Encuestado(10, "elkin", 3, 8)
+    e6 = Encuestado(6, "elkin", 6, 10)#moda 8
+    
+    e7 = Encuestado(15, "elkin", 1, 4)
+    e8 = Encuestado(7, "elkin", 1, 7)#moda 4
 
     p1 = Pregunta(1)
     p2 = Pregunta(2)
@@ -236,22 +309,33 @@ if __name__ == "__main__":
     p1.encuestados.insertar(e2)
     p1.encuestados.insertar(e3)
     p1.encuestados.insertar(e4)
+    
     p2.encuestados.insertar(e5)
     p2.encuestados.insertar(e6)
+    
     p3.encuestados.insertar(e7)
     p3.encuestados.insertar(e8)
+    
     #print(p1)
     t1 = Tema(1)
     t2 = Tema(2)
+    print(p1.moda())
+    print(p2.moda())
+    print(p3.moda())
     
     t1.preguntas.insertar(p1)
-    t2.preguntas.insertar(p2)
+    t1.preguntas.insertar(p2)
     t2.preguntas.insertar(p3)
+    # print(t1.moda())
     arbolTemas = ArbolRB()
     arbolTemas.insertar(t1)
     arbolTemas.insertar(t2)
     
-    imprimir_estructura(arbolTemas)
+    print(arbolTemas.max_min_moda())
+    
+    # print(p1.moda())
+    # print(t1.preguntas.arbol_maximo())
+    # imprimir_estructura(arbolTemas)
     # print(t1.preguntas.obtener_promedio("opinion"))
     # print(t2.preguntas.obtener_promedio("opinion"), end='\n\n')
     
