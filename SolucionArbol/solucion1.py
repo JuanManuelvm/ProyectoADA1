@@ -74,10 +74,10 @@ class Pregunta:
     
     def __gt__(self, other):
         if self.promedio_opinion() != other.promedio_opinion():
-            return self.promedio_opinion() < other.promedio_opinion()
+            return self.promedio_opinion() > other.promedio_opinion()
         if self.promedio_experticia() != other.promedio_experticia():
-            return self.promedio_experticia() < other.promedio_experticia()
-        return self.cantidad_encuestados() < other.cantidad_encuestados()
+            return self.promedio_experticia() > other.promedio_experticia()
+        return self.cantidad_encuestados() > other.cantidad_encuestados()
     
 class Tema:
     def __init__(self, id):
@@ -106,7 +106,7 @@ class Tema:
         return self.preguntas.obtener_promedio("experticia")
 
  
-    def __gt__(self, other):
+    def __lt__(self, other):
         if self.promedio_opinion() != other.promedio_opinion():
             return self.promedio_opinion() < other.promedio_opinion()
         if self.promedio_experticia() != other.promedio_experticia():
@@ -225,6 +225,7 @@ class ArbolRB:
         while nodo.der is not None:
             nodo = nodo.der
         return nodo.dato
+    
     def arbol_minimo(self):
         nodo = self.raiz
         while nodo.izq is not None:
@@ -264,7 +265,15 @@ class ArbolRB:
         if max_bool:
             return arbolPreguntas.arbol_maximo()
         return arbolPreguntas.arbol_minimo()
-        
+    def max_min_promedio(self, max_bool = True):
+        arbolPreguntas = ArbolRB()
+        for tema in self.inorden():
+            for pregunta in tema.preguntas.inorden():
+                arbolPreguntas.insertar(pregunta)
+        if max_bool:
+            return arbolPreguntas.arbol_maximo()
+        return arbolPreguntas.arbol_minimo()
+    
     def __str__(self):
         return str(self.raiz.dato)
 
@@ -323,6 +332,10 @@ if __name__ == "__main__":
     print(p2.moda())
     print(p3.moda())
     
+    print(p1.promedio_opinion())
+    print(p2.promedio_opinion())
+    print(p3.promedio_opinion())
+    
     t1.preguntas.insertar(p1)
     t1.preguntas.insertar(p2)
     t2.preguntas.insertar(p3)
@@ -332,7 +345,7 @@ if __name__ == "__main__":
     arbolTemas.insertar(t2)
     
     print(arbolTemas.max_min_moda())
-    
+    print(arbolTemas.max_min_promedio(False))
     # print(p1.moda())
     # print(t1.preguntas.arbol_maximo())
     # imprimir_estructura(arbolTemas)
