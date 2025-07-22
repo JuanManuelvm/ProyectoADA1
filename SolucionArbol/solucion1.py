@@ -20,11 +20,11 @@ class Encuestado:
     
     def __gt__(self, other):
         if self.opinion != other.opinion:
-            return self.opinion > other.opinion
+            return self.opinion < other.opinion
         self.frecuencia += 1 
         if self.experticia != other.experticia:
-            return self.experticia > other.experticia
-        return self.id > other.id
+            return self.experticia < other.experticia
+        return self.id < other.id
         
     def _order_frecuenci(self, other):
         if self.frecuencia != other.frecuencia:
@@ -92,14 +92,48 @@ class Pregunta:
         self.calcular_extremismos()
         if self._extremismos != other._extremismos:
             return self._extremismos < other._extremismos
-        return self.id > other.id
+        return self.id > other.id 
+
+    def mediana_opinion(self):
+        n = self.cantidad_encuestados()
+        if n == 0:
+            return 0
+
+        # Índices a buscar (uno o dos, dependiendo si n es impar o par)
+        target_indices = [n // 2] if n % 2 == 1 else [n // 2 - 1, n // 2]
+        resultados = []
+
+        # Recorre el árbol inorden sin usar listas, sólo contador
+        def inorden_buscar_mediana(nodo, contador):
+            if nodo is None or len(resultados) == len(target_indices):
+                return contador
+
+            # Visita izquierda
+            contador = inorden_buscar_mediana(nodo.izq, contador)
+
+            # Visita actual
+            if contador in target_indices:
+                resultados.append(nodo.dato.opinion)
+            contador += 1
+
+            # Visita derecha
+            return inorden_buscar_mediana(nodo.der, contador)
+
+        inorden_buscar_mediana(self.encuestados.raiz, 0)
+
+        # Retornar resultado
+        if n % 2 == 1:
+            return resultados[0]
+        else:
+            return min(resultados[0], resultados[1])
+
     
     def __gt__(self, other):
         if self.promedio_opinion() != other.promedio_opinion():
-            return self.promedio_opinion() > other.promedio_opinion()
+            return self.promedio_opinion() < other.promedio_opinion()
         if self.promedio_experticia() != other.promedio_experticia():
-            return self.promedio_experticia() > other.promedio_experticia()
-        return self.cantidad_encuestados() > other.cantidad_encuestados()
+            return self.promedio_experticia() < other.promedio_experticia()
+        return self.cantidad_encuestados() < other.cantidad_encuestados()
 
     
 class Tema:
@@ -130,10 +164,10 @@ class Tema:
  
     def __lt__(self, other):
         if self.promedio_opinion() != other.promedio_opinion():
-            return self.promedio_opinion() < other.promedio_opinion()
+            return self.promedio_opinion() > other.promedio_opinion()
         if self.promedio_experticia() != other.promedio_experticia():
-            return self.promedio_experticia() < other.promedio_experticia()
-        return self.cantidad_preguntas() < other.cantidad_preguntas()
+            return self.promedio_experticia() > other.promedio_experticia()
+        return self.cantidad_preguntas() > other.cantidad_preguntas()
    
     
 class NodoRB:
@@ -170,6 +204,32 @@ class ArbolRB:
         raiz = self._balancear(raiz)
         return raiz
     
+    def insertar_experticia(self, dato):
+        nuevo = NodoRB(dato)
+        self.raiz = self._insertar_experticia_rec(self.raiz, nuevo)
+        self.raiz.color = NEGRO
+
+    def _insertar_experticia_rec(self, raiz, nodo):
+        if raiz is None:
+            return nodo
+        # Orden descendente por experticia
+        if nodo.dato.experticia > raiz.dato.experticia:
+            raiz.izq = self._insertar_experticia_rec(raiz.izq, nodo)
+            raiz.izq.padre = raiz
+        elif nodo.dato.experticia < raiz.dato.experticia:
+            raiz.der = self._insertar_experticia_rec(raiz.der, nodo)
+            raiz.der.padre = raiz
+        else:
+            # Experticia igual -> orden por id DESCENDENTE
+            if nodo.dato.id > raiz.dato.id:
+                raiz.izq = self._insertar_experticia_rec(raiz.izq, nodo)
+                raiz.izq.padre = raiz
+            else:
+                raiz.der = self._insertar_experticia_rec(raiz.der, nodo)
+                raiz.der.padre = raiz
+        return self._balancear(raiz)
+
+
     def insertar_moda(self, dato):
         nuevo = NodoRB(dato)
         self.raiz = self._insertar_moda_rec(self.raiz, nuevo)
@@ -313,6 +373,30 @@ class ArbolRB:
         suma_der, cant_der = self._sumar_y_contar(nodo.der, atributo)
         return valor + suma_izq + suma_der, 1 + cant_izq + cant_der
     
+    def max_min_mediana(self, mayor=True):
+        resultado = None
+        mejor_valor = None
+        for tema in self.inorden():
+            for pregunta in tema.preguntas.inorden():
+                mediana = pregunta.mediana_opinion()
+                if resultado is None:
+                    resultado = pregunta
+                    mejor_valor = mediana
+                elif mayor:
+                    if mediana > mejor_valor:
+                        resultado = pregunta
+                        mejor_valor = mediana
+                    elif mediana == mejor_valor and mediana < resultado.mediana_opinion():
+                        resultado = pregunta 
+                else:
+                    if mediana < mejor_valor:
+                        resultado = pregunta
+                        mejor_valor = mediana
+                    elif mediana == mejor_valor and mediana < resultado.mediana_opinion():
+                        resultado = pregunta
+        return resultado
+
+    
     def max_min_moda(self, max_bool = True):
         arbolPreguntas = ArbolRB()
         for tema in self.inorden():
@@ -363,101 +447,128 @@ class ArbolRB:
 def imprimir_estructura(arbol_temas):
     todos_los_encuestados = set()
     temas = arbol_temas.inorden()
-
+    texto = ""
     for tema in temas:
-        print(tema)
-        preguntas = tema.preguntas.inorden()
+            texto = texto + f"[{round(tema.obtener_opinion_promedio(), 2)}] Tema {tema.id}:\n"
+            preguntas = tema.preguntas.inorden()
+            for pregunta in preguntas:
+                ids = [x.id for x in pregunta.encuestados.inorden()]
+                todos_los_encuestados.update(pregunta.encuestados.inorden())
+                texto = texto + f" [{round(pregunta.obtener_opinion_promedio(), 2)}] Pregunta {pregunta.id}: {ids}\n"
+            texto = texto + "\n"
 
-        for pregunta in preguntas:
-            ids_encuestados = [x.id for x in pregunta.encuestados.inorden()]
-            todos_los_encuestados.update(ids_encuestados)
-
-    encuestados_str = ", ".join(str(x) for x in todos_los_encuestados)
-    print("Lista de encuestados:")
-    print(f"   {{{encuestados_str}}}")  
+    return texto, todos_los_encuestados
     
+
+
+def leer_archivo(nombre_archivo):
+    with open(nombre_archivo, 'r', encoding='utf-8') as f:
+        lista_encuestados = []
+        id_encuestado = 1
+
+        linea = f.readline()
+        while linea and linea.strip():  # Participantes hasta línea vacía
+            partes = linea.strip().split(',')
+            if len(partes) == 3:
+                nombre = partes[0].strip()
+                experticia = int(partes[1].split(':')[1].strip())
+                opinion = int(partes[2].split(':')[1].strip())
+                encuestado = Encuestado(id_encuestado, nombre, experticia, opinion)
+                lista_encuestados.append(encuestado)
+                id_encuestado += 1
+            linea = f.readline()
+        
+        # Saltar líneas vacías hasta comenzar los bloques de preguntas
+        while linea and not linea.strip():
+            linea = f.readline()
+            
+        arbol_temas = ArbolRB()
+        id_tema = 1
+        id_pregunta = 1
+
+        tema_actual = Tema(id_tema)
+
+        while linea:
+            linea = linea.strip()
+            
+            if not linea:
+                # Línea vacía (posible separación entre temas)
+                if tema_actual.preguntas.raiz is not None:
+                    arbol_temas.insertar(tema_actual)
+                    id_tema += 1
+                    id_pregunta = 1
+                    tema_actual = Tema(id_tema)
+                # Leer siguiente línea
+                linea = f.readline()
+                continue
+
+            if linea.startswith('{') and linea.endswith('}'):
+                pregunta = Pregunta(str(id_tema) + "." + str(id_pregunta))
+                contenido = linea[1:-1].split(',')
+
+                for id_str in contenido:
+                    id_limpio = id_str.strip()
+                    if id_limpio.isdigit():
+                        idx = int(id_limpio)
+                        if 1 <= idx <= len(lista_encuestados):
+                            pregunta.encuestados.insertar(lista_encuestados[idx - 1])
+
+                tema_actual.preguntas.insertar(pregunta)
+                id_pregunta += 1
+
+            linea = f.readline()
+
+        # Insertar el último tema si tiene preguntas
+        if tema_actual.preguntas.raiz is not None:
+            arbol_temas.insertar(tema_actual)
+
+        return arbol_temas
+
+def generar_salida_txt(arbol_temas, nombre_archivo="output.txt"):
+    with open(nombre_archivo, 'w', encoding='utf-8') as f:
+        # Resultados de la encuesta
+        f.write("Resultados de la encuesta:\n\n")
+        temas = arbol_temas.inorden()
+        todos_los_encuestados = set()
+        arbol, todos_los_encuestados = imprimir_estructura(arbol_temas)
+        f.write(arbol)
+        
+        # Lista de encuestados
+        f.write("Lista de encuestados:\n")
+        arbol_experticia = ArbolRB()
+        for encuestado in todos_los_encuestados:
+            arbol_experticia.insertar_experticia(encuestado)
+
+        for encuestado in arbol_experticia.inorden():
+            f.write(f" ({encuestado.id}, Nombre:'{encuestado.nombre}', Experticia:{encuestado.experticia}, Opinión:{encuestado.opinion})\n")
+        f.write("\n")
+
+        # Resultados analíticos
+        f.write("Resultados:\n")
+        max_prom = arbol_temas.max_min_promedio(False)
+        min_prom = arbol_temas.max_min_promedio(True)
+        max_exp = max(tema.preguntas.arbol_maximo() for tema in temas if tema.preguntas.raiz is not None)
+        min_exp = min(tema.preguntas.arbol_minimo() for tema in temas if tema.preguntas.raiz is not None)
+        max_median = arbol_temas.max_min_mediana(True)
+        min_median = arbol_temas.max_min_mediana(False)
+        max_moda = arbol_temas.max_min_moda(True)
+        min_moda = arbol_temas.max_min_moda(False)
+        max_extremo = arbol_temas.max_extremismo()
+        max_consenso = arbol_temas.max_consenso()
+
+        f.write(f"  Pregunta con mayor promedio de opinion: [{round(max_prom.obtener_opinion_promedio(), 2)}] Pregunta: {max_prom.id}\n")
+        f.write(f"  Pregunta con menor promedio de opinion: [{round(min_prom.obtener_opinion_promedio(), 2)}] Pregunta: {min_prom.id}\n")
+        f.write(f"  Pregunta con mayor promedio de experticia: [{round(max_exp.obtener_experticia_promedio(), 2)}] Pregunta: {max_exp.id}\n")
+        f.write(f"  Pregunta con menor promedio de experticia: [{round(min_exp.obtener_experticia_promedio(), 2)}] Pregunta: {min_exp.id}\n")
+        f.write(f"  Pregunta con Mayor mediana de opinion: [{max_median.mediana_opinion()}] Pregunta: {max_median.id}\n")
+        f.write(f"  Pregunta con menor mediana de opinion: [{min_median.mediana_opinion()}] Pregunta: {min_median.id}\n")
+        f.write(f"  Pregunta con mayor moda de opinion: [{max_moda._moda_opinion}] Pregunta: {max_moda.id}\n")
+        f.write(f"  Pregunta con menor moda de opinion: [{min_moda._moda_opinion}] Pregunta: {min_moda.id}\n")
+        f.write(f"  Pregunta con mayor extremismo: [{round(max_extremo._extremismos, 2)}] Pregunta: {max_extremo.id}\n")
+        f.write(f"  Pregunta con mayor consenso: [{round(max_consenso.porcentaje_consenso, 2)}] Pregunta: {max_consenso.id}\n")
 
        
 if __name__ == "__main__":
     
-    
-    e1 = Encuestado(1, "elkin", 9, 1)
-    e2 = Encuestado(2, "elkin", 5, 3)
-    e3 = Encuestado(3, "elkin", 10,1)
-    e4 = Encuestado(4, "elkin", 30, 10)#moda 6
-    
-
-    
-    e5 = Encuestado(5, "elkin", 3, 8)
-    e6 = Encuestado(6, "elkin", 6, 10)#moda 8
-    
-    e7 = Encuestado(7, "elkin", 1, 4)
-    e8 = Encuestado(8, "elkin", 1, 7)#moda 4
-
-    e9 = Encuestado(9, "elkin", 9, 10)
-    e10 = Encuestado(10, "elkin", 5, 10)
-    e11 = Encuestado(11, "elkin", 10,4)
-    e12 = Encuestado(12, "elkin", 30, 2)#moda 10
-    
-    p1 = Pregunta(1)
-    p2 = Pregunta(2)
-    p3 = Pregunta(3)
-    
-
-    p1.encuestados.insertar(e1)
-    p1.encuestados.insertar(e2)
-    p1.encuestados.insertar(e3)
-    p1.encuestados.insertar(e4)
-    
-    p2.encuestados.insertar(e5)
-    p2.encuestados.insertar(e6)
-    
-    p3.encuestados.insertar(e7)
-    p3.encuestados.insertar(e8)
-    p3.encuestados.insertar(e9)
-    p3.encuestados.insertar(e10)
-    p3.encuestados.insertar(e11)
-    p3.encuestados.insertar(e12)
-    
-    #print(p1)
-    t1 = Tema(1)
-    t2 = Tema(2)
-    print(p1.moda())
-    print(p2.moda())
-    print(p3.moda())
-    print(p1.porcentaje_consenso)
-    print(p2.porcentaje_consenso)
-    print(p3.porcentaje_consenso)
-    
-    # print(p1.promedio_opinion())
-    # print(p2.promedio_opinion())
-    # print(p3.promedio_opinion())
-    
-    t1.preguntas.insertar(p1)
-    t1.preguntas.insertar(p2)
-    t2.preguntas.insertar(p3)
-    arbolTemas = ArbolRB()
-    arbolTemas.insertar(t1)
-    arbolTemas.insertar(t2)
-
-    # print(arbolTemas.max_extremismo())
-    # print(p1.calcular_extremismos())
-    # print(p2.calcular_extremismos())
-    # print(p3.calcular_extremismos())
-    # print(arbolTemas.max_min_moda())
-    # print(arbolTemas.max_min_promedio(False))
-    print(arbolTemas.max_consenso())
-    # print(p1.moda())
-    # print(t1.preguntas.arbol_maximo())
-    # imprimir_estructura(arbolTemas)
-    # print(t1.preguntas.obtener_promedio("opinion"))
-    # print(t2.preguntas.obtener_promedio("opinion"), end='\n\n')
-    
-    # print(p1.encuestados.obtener_promedio("opinion"))
-    # print(p2.encuestados.obtener_promedio("opinion"))
-    # print(p3.encuestados.obtener_promedio("opinion"))
-    
-    # print("\n")
-
-
-
+    arbol_temas = leer_archivo("Test3.txt")
+    generar_salida_txt(arbol_temas, "outputTest.txt")
