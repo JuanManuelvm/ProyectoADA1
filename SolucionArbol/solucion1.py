@@ -38,6 +38,7 @@ class Pregunta:
         self._promedio_opinion = self.promedio_opinion()
         self._moda_opinion = None
         self._extremismos = 0
+        self.porcentaje_consenso = 0
 
     def __str__(self):
         ids =", ".join(str(x.id) for x in self.encuestados.inorden())
@@ -69,8 +70,17 @@ class Pregunta:
         arnbymoda = ArbolRB()
         for x in self.encuestados.inorden():
             arnbymoda.insertar_moda(x)
-        self._moda_opinion = arnbymoda.arbol_maximo().opinion
+        dato = arnbymoda.arbol_maximo()
+        self._moda_opinion = dato.opinion
+        n = self.cantidad_encuestados()
+        self.porcentaje_consenso = dato.frecuencia / n if n != 0 else 0
         return self._moda_opinion
+    
+    def _order_consenso(self, other): #aqui se ordena por moda
+        self.moda()
+        if self.porcentaje_consenso != other.porcentaje_consenso:
+            return self.porcentaje_consenso < other.porcentaje_consenso
+        return self._moda_opinion > other._moda_opinion
             
     def _order_frecuenci(self, other): #aqui se ordena por moda
         self.moda()
@@ -96,7 +106,6 @@ class Tema:
     def __init__(self, id):
         self.id = id
         self.preguntas = ArbolRB()
-        self._moda_opinion = None
         
     def __str__(self):
         preguntasstr = " \n\t".join(str(x) for x in self.preguntas.inorden())
@@ -198,6 +207,25 @@ class ArbolRB:
         # Balanceo
         raiz = self._balancear(raiz)
         return raiz
+    
+    def insertar_consenso(self, dato):
+        nuevo = NodoRB(dato)
+        self.raiz = self._insertar_consenso_rec(self.raiz, nuevo)
+        self.raiz.color = NEGRO
+
+    def _insertar_consenso_rec(self, raiz, nodo):
+        if raiz is None:
+            return nodo
+        if nodo.dato._order_consenso(raiz.dato):
+            raiz.izq = self._insertar_consenso_rec(raiz.izq, nodo)
+            raiz.izq.padre = raiz
+        else:
+            raiz.der = self._insertar_consenso_rec(raiz.der, nodo)
+            raiz.der.padre = raiz
+
+        # Balanceo
+        raiz = self._balancear(raiz)
+        return raiz
 
     def _es_rojo(self, nodo):
         return nodo is not None and nodo.color == ROJO
@@ -289,6 +317,7 @@ class ArbolRB:
         arbolPreguntas = ArbolRB()
         for tema in self.inorden():
             for pregunta in tema.preguntas.inorden():
+                pregunta.moda()
                 arbolPreguntas.insertar_moda(pregunta)
         if max_bool:
             return arbolPreguntas.arbol_maximo()
@@ -307,7 +336,16 @@ class ArbolRB:
         arbolPreguntas = ArbolRB()
         for tema in self.inorden():
             for pregunta in tema.preguntas.inorden():
+                pregunta.moda()
                 arbolPreguntas.insertar_extremismo(pregunta)
+        return arbolPreguntas.arbol_maximo()
+    
+    def max_consenso(self):
+        arbolPreguntas = ArbolRB()
+        for tema in self.inorden():
+            for pregunta in tema.preguntas.inorden():
+                pregunta.moda()
+                arbolPreguntas.insertar_consenso(pregunta)
         return arbolPreguntas.arbol_maximo()
 
     def contar_extremos(self):
@@ -348,12 +386,19 @@ if __name__ == "__main__":
     e3 = Encuestado(3, "elkin", 10,1)
     e4 = Encuestado(4, "elkin", 30, 10)#moda 6
     
-    e5 = Encuestado(10, "elkin", 3, 8)
+
+    
+    e5 = Encuestado(5, "elkin", 3, 8)
     e6 = Encuestado(6, "elkin", 6, 10)#moda 8
     
-    e7 = Encuestado(15, "elkin", 1, 4)
-    e8 = Encuestado(7, "elkin", 1, 7)#moda 4
+    e7 = Encuestado(7, "elkin", 1, 4)
+    e8 = Encuestado(8, "elkin", 1, 7)#moda 4
 
+    e9 = Encuestado(9, "elkin", 9, 10)
+    e10 = Encuestado(10, "elkin", 5, 10)
+    e11 = Encuestado(11, "elkin", 10,4)
+    e12 = Encuestado(12, "elkin", 30, 2)#moda 10
+    
     p1 = Pregunta(1)
     p2 = Pregunta(2)
     p3 = Pregunta(3)
@@ -369,13 +414,20 @@ if __name__ == "__main__":
     
     p3.encuestados.insertar(e7)
     p3.encuestados.insertar(e8)
+    p3.encuestados.insertar(e9)
+    p3.encuestados.insertar(e10)
+    p3.encuestados.insertar(e11)
+    p3.encuestados.insertar(e12)
     
     #print(p1)
     t1 = Tema(1)
     t2 = Tema(2)
-    # print(p1.moda())
-    # print(p2.moda())
-    # print(p3.moda())
+    print(p1.moda())
+    print(p2.moda())
+    print(p3.moda())
+    print(p1.porcentaje_consenso)
+    print(p2.porcentaje_consenso)
+    print(p3.porcentaje_consenso)
     
     # print(p1.promedio_opinion())
     # print(p2.promedio_opinion())
@@ -384,17 +436,17 @@ if __name__ == "__main__":
     t1.preguntas.insertar(p1)
     t1.preguntas.insertar(p2)
     t2.preguntas.insertar(p3)
-    # print(t1.moda())
     arbolTemas = ArbolRB()
     arbolTemas.insertar(t1)
     arbolTemas.insertar(t2)
-    
-    print(arbolTemas.max_extremismo())
-    print(p1.calcular_extremismos())
-    print(p2.calcular_extremismos())
-    print(p3.calcular_extremismos())
+
+    # print(arbolTemas.max_extremismo())
+    # print(p1.calcular_extremismos())
+    # print(p2.calcular_extremismos())
+    # print(p3.calcular_extremismos())
     # print(arbolTemas.max_min_moda())
     # print(arbolTemas.max_min_promedio(False))
+    print(arbolTemas.max_consenso())
     # print(p1.moda())
     # print(t1.preguntas.arbol_maximo())
     # imprimir_estructura(arbolTemas)
