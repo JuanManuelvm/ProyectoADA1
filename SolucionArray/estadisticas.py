@@ -7,10 +7,10 @@ from merge import merge_sort_simple
 def calcular_mediana(valores):
     """Calcula la mediana de una lista de valores"""
     n = len(valores)
-    valores_ordenados = merge_sort_simple(valores[:])  # Copia para no modificar original
+    valores_ordenados = merge_sort_simple(valores[:])
     
     if n % 2 == 0:
-        return (valores_ordenados[n//2 - 1] + valores_ordenados[n//2]) / 2
+        return (valores_ordenados[n//2 - 1] + valores_ordenados[n//2]) // 2
     else:
         return valores_ordenados[n//2]
 

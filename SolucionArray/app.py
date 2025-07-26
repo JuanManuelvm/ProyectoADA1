@@ -98,32 +98,40 @@ def calcular_estadisticas_globales(preguntas):
 # ============================
 
 def mostrar_resultados(resultados):
-    """Muestra los resultados en el formato requerido"""
+    """Muestra los resultados en el formato requerido y los guarda en un archivo"""
     
-    print("\n" + "=" * 60)
-    print("Resultados de la encuesta:\n")
-    
-    # Mostrar temas ordenados
-    for tema in resultados["temas_ordenados"]:
-        print(tema)
-    
-    # Mostrar encuestados
-    print(f"Lista de encuestados:")
-    encuestados_str = "\n".join(f" ({linea})" for linea in resultados["lista_encuestados"])
-    print(encuestados_str)
-    
-    # Mostrar estadísticas globales
-    print("\nResultados:")
-    stats = resultados["estadisticas_globales"]
-    
-    print(f"  Pregunta con mayor promedio de opinion: [{stats['mayor_promedio'].promedio_opinion}] {stats['mayor_promedio'].id}")
-    print(f"  Pregunta con menor promedio de opinion: [{stats['menor_promedio'].promedio_opinion}] {stats['menor_promedio'].id}")
-    print(f"  Pregunta con mayor mediana de opinion: [{stats['mayor_mediana'].mediana}] {stats['mayor_mediana'].id}")
-    print(f"  Pregunta con menor mediana de opinion: [{stats['menor_mediana'].mediana}] {stats['menor_mediana'].id}")
-    print(f"  Pregunta con mayor valor de moda: [{stats['mayor_moda'].moda}] {stats['mayor_moda'].id}")
-    print(f"  Pregunta con menor valor de moda: [{stats['menor_moda'].moda}] {stats['menor_moda'].id}")
-    print(f"  Pregunta con mayor extremismo: [{stats['mayor_extremismo'].extremismo}] {stats['mayor_extremismo'].id}")
-    print(f"  Pregunta con mayor consenso: [{stats['mayor_consenso'].consenso}] {stats['mayor_consenso'].id}")
+    # Abrimos archivo en modo escritura
+    with open("outPutTest.txt", "w", encoding="utf-8") as archivo:
+        
+        def out(text=""):
+            print(text)  # imprime en consola
+            print(text, file=archivo)  # escribe en archivo
+
+        out("Resultados de la encuesta:\n")
+        
+        # Mostrar temas ordenados
+        for tema in resultados["temas_ordenados"]:
+            out(tema)
+        
+        # Mostrar encuestados
+        out("Lista de encuestados:")
+        encuestados_str = "\n".join(f" ({linea})" for linea in resultados["lista_encuestados"])
+        out(encuestados_str)
+        
+        # Mostrar estadísticas globales
+        out("\nResultados:")
+        stats = resultados["estadisticas_globales"]
+        
+        out(f"  Pregunta con mayor promedio de opinion: [{stats['mayor_promedio'].promedio_opinion}] {stats['mayor_promedio'].id}")
+        out(f"  Pregunta con menor promedio de opinion: [{stats['menor_promedio'].promedio_opinion}] {stats['menor_promedio'].id}")
+        out(f"  Pregunta con mayor mediana de opinion: [{stats['mayor_mediana'].mediana}] {stats['mayor_mediana'].id}")
+        out(f"  Pregunta con menor mediana de opinion: [{stats['menor_mediana'].mediana}] {stats['menor_mediana'].id}")
+        out(f"  Pregunta con mayor valor de moda: [{stats['mayor_moda'].moda}] {stats['mayor_moda'].id}")
+        out(f"  Pregunta con menor valor de moda: [{stats['menor_moda'].moda}] {stats['menor_moda'].id}")
+        out(f"  Pregunta con mayor extremismo: [{stats['mayor_extremismo'].extremismo}] {stats['mayor_extremismo'].id}")
+        out(f"  Pregunta con mayor consenso: [{stats['mayor_consenso'].consenso}] {stats['mayor_consenso'].id}")
+        
+        print("**** SE GENERO UN ARCHIVO DE SALIDA CON ESTE MISMO RESULTADO ****")
 
 # ============================
 # EJECUCIÓN PRINCIPAL
@@ -133,8 +141,9 @@ def main():
     """Función principal"""
     print("SOLUCIÓN USANDO ARREGLOS")
     print("=" * 60)
-    
     nombre_archivo = input("Ingrese el nombre del archivo (ejemplo: encuesta1.txt): ").strip()
+    print("=" * 60)
+
     temas, todos_encuestados = leer_archivo_encuesta(nombre_archivo)
     
     if temas is None or todos_encuestados is None:

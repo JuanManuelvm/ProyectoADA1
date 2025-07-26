@@ -42,14 +42,17 @@ def merge_sort_encuestados(encuestados):
     return merge_encuestados(left, right)
 
 def merge_encuestados(left, right):
-    """Merge para encuestados: opinión desc, luego experticia desc"""
+    """Merge para encuestados: opinión desc, luego experticia desc, luego id asc"""
     result = []
     i = j = 0
     
     while i < len(left) and j < len(right):
-        # Primero por opinión descendente, luego por experticia descendente
+        # Primero por opinión descendente, luego por experticia descendente, luego por id ascendente
         if (left[i].opinion > right[j].opinion or 
             (left[i].opinion == right[j].opinion and left[i].experticia > right[j].experticia)):
+            result.append(left[i])
+            i += 1
+        elif (left[i].opinion == right[j].opinion and left[i].experticia == right[j].experticia and left[i].id < right[j].id):
             result.append(left[i])
             i += 1
         else:
