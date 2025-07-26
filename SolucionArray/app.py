@@ -3,41 +3,6 @@ from merge import merge_sort_temas, merge_sort_encuestados_global
 from lectura import leer_archivo_encuesta
 
 # ============================
-# DATOS DE LA INSTANCIA DEL ENUNCIADO
-# ============================
-
-def crear_instancia_ejemplo():
-    """Crea la instancia de ejemplo del enunciado"""
-    
-    # Encuestados según el enunciado
-    encuestados_data = {
-        1: clases.Encuestado(1, "Sofia García", 1, 6),
-        2: clases.Encuestado(2, "Alejandro Torres", 7, 10),
-        3: clases.Encuestado(3, "Valentina Rodriguez", 9, 0),
-        4: clases.Encuestado(4, "Juan Lopéz", 10, 1),
-        5: clases.Encuestado(5, "Martina Martinez", 7, 0),
-        6: clases.Encuestado(6, "Sebastián Pérez", 8, 9),
-        7: clases.Encuestado(7, "Camila Fernández", 2, 7),
-        8: clases.Encuestado(8, "Mateo González", 4, 7),
-        9: clases.Encuestado(9, "Isabella Díaz", 7, 5),
-        10: clases.Encuestado(10, "Daniel Ruiz", 2, 9),
-        11: clases.Encuestado(11, "Luciana Sánchez", 1, 7),
-        12: clases.Encuestado(12, "Lucas Vásquez", 6, 8),
-    }
-
-    # Preguntas por tema según el enunciado
-    pregunta_1_1 = clases.Pregunta("Pregunta 1.1", [encuestados_data[10], encuestados_data[2]])
-    pregunta_1_2 = clases.Pregunta("Pregunta 1.2", [encuestados_data[1], encuestados_data[9], encuestados_data[12], encuestados_data[6]])
-    pregunta_2_1 = clases.Pregunta("Pregunta 2.1", [encuestados_data[11], encuestados_data[8], encuestados_data[7]])
-    pregunta_2_2 = clases.Pregunta("Pregunta 2.2", [encuestados_data[3], encuestados_data[4], encuestados_data[5]])
-
-    # Temas
-    tema_1 = clases.Tema("Tema 1", [pregunta_1_1, pregunta_1_2])
-    tema_2 = clases.Tema("Tema 2", [pregunta_2_1, pregunta_2_2])
-
-    return [tema_1, tema_2], list(encuestados_data.values())
-
-# ============================
 # FUNCIÓN PRINCIPAL DE PROCESAMIENTO
 # ============================
 
@@ -73,14 +38,60 @@ def calcular_estadisticas_globales(preguntas):
     if not preguntas:
         return {}
     
-    mayor_prom = max(preguntas, key=lambda p: p.promedio_opinion)
-    menor_prom = min(preguntas, key=lambda p: p.promedio_opinion)
-    mayor_mediana = max(preguntas, key=lambda p: p.mediana)
-    menor_mediana = min(preguntas, key=lambda p: p.mediana)
-    mayor_moda = max(preguntas, key=lambda p: p.moda)
-    menor_moda = min(preguntas, key=lambda p: p.moda)
-    mayor_extremismo = max(preguntas, key=lambda p: p.extremismo)
-    mayor_consenso = max(preguntas, key=lambda p: p.consenso)
+    # Mayor promedio
+    mayor_prom_valor = max(p.promedio_opinion for p in preguntas) # Calculo el maximo promedio
+    mayor_prom = min(
+        (p for p in preguntas if p.promedio_opinion == mayor_prom_valor),
+        key=lambda p: p.id
+    ) # Calculo todos los que tengan el mismo maximo promedio y escojo el de menor id
+
+    # Menor promedio
+    menor_prom_valor = min(p.promedio_opinion for p in preguntas)
+    menor_prom = min(
+        (p for p in preguntas if p.promedio_opinion == menor_prom_valor),
+        key=lambda p: p.id
+    )
+
+    # Para mediana
+    mayor_mediana_valor = max(p.mediana for p in preguntas)
+    mayor_mediana = min(
+        (p for p in preguntas if p.mediana == mayor_mediana_valor),
+        key=lambda p: p.id
+    )
+
+    menor_mediana_valor = min(p.mediana for p in preguntas)
+    menor_mediana = min(
+        (p for p in preguntas if p.mediana == menor_mediana_valor),
+        key=lambda p: p.id
+    )
+
+    # Para moda
+    mayor_moda_valor = max(p.moda for p in preguntas)
+    mayor_moda = min(
+        (p for p in preguntas if p.moda == mayor_moda_valor),
+        key=lambda p: p.id
+    )
+
+    menor_moda_valor = min(p.moda for p in preguntas)
+    menor_moda = min(
+        (p for p in preguntas if p.moda == menor_moda_valor),
+        key=lambda p: p.id
+    )
+
+    # Para extremismo: solo mayor, sin reglas de desempate adicionales
+    mayor_extremismo_valor = max(p.extremismo for p in preguntas)
+    mayor_extremismo = min(
+        (p for p in preguntas if p.extremismo == mayor_extremismo_valor),
+        key=lambda p: p.id
+    )
+
+    # Para consenso: desempate usando moda más baja
+    mayor_consenso_valor = max(p.consenso for p in preguntas)
+    candidatas_consenso = [p for p in preguntas if p.consenso == mayor_consenso_valor]
+
+    # Entre las candidatas, elegimos la que tenga la menor moda y menor id si empatan
+    mayor_consenso = min(candidatas_consenso, key=lambda p: (p.moda, p.id))
+
     
     return {
         "mayor_promedio": mayor_prom,
@@ -147,8 +158,8 @@ def main():
     temas, todos_encuestados = leer_archivo_encuesta(nombre_archivo)
     
     if temas is None or todos_encuestados is None:
-        print("No se pudo cargar el archivo. Usando ejemplo del enunciado.")
-        temas, todos_encuestados = crear_instancia_ejemplo()
+        print("No se pudo cargar el archivo.")
+        exit()
 
     # Procesar encuesta
     resultados = procesar_encuesta(temas, todos_encuestados)
