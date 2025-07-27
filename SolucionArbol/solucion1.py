@@ -567,8 +567,18 @@ def generar_salida_txt(arbol_temas, nombre_archivo="output.txt"):
         f.write(f"  Pregunta con mayor extremismo: [{round(max_extremo._extremismos, 2)}] Pregunta: {max_extremo.id}\n")
         f.write(f"  Pregunta con mayor consenso: [{round(max_consenso.porcentaje_consenso, 2)}] Pregunta: {max_consenso.id}\n")
 
-       
-if __name__ == "__main__":
+def main():
+    """Función principal"""
+    print("SOLUCIÓN USANDO ARBOLES RN")
+    print("=" * 60)
+    nombre_archivo = input("Ingrese el nombre del archivo (ejemplo: encuesta1.txt): ").strip()
+    print("=" * 60)
+
+    arbol_temas = leer_archivo(nombre_archivo)
     
-    arbol_temas = leer_archivo("Test3.txt")
+    # Mostrar resultados
     generar_salida_txt(arbol_temas, "outputTest.txt")
+    print("Resultados guardados en 'outputTest.txt'")
+
+if __name__ == "__main__":
+    main()
